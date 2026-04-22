@@ -1,1 +1,5 @@
 /data
+predictions/**/*.txt
+submission/*.csv
+__pycache__/
+*.pyc
