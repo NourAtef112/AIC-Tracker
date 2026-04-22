@@ -15,8 +15,9 @@ def save_predictions_txt(pred_boxes, seq_key: str, output_dir: str = "prediction
     
     with open(out_path, "w") as f:
         for box in pred_boxes:
-            f.write(f"{box},{box},{box},{box}\n")
-    return str(out_path)
+            # This forces it to write exactly x,y,w,h without parentheses
+            f.write(f"{box[0]},{box[1]},{box[2]},{box[3]}\n")
+    return str(out_path)    
 
 def generate_submission_csv(all_predictions: dict, output_csv: str = "submission/sample_submission.csv"):
     """
@@ -33,6 +34,6 @@ def generate_submission_csv(all_predictions: dict, output_csv: str = "submission
         for seq_key, boxes in all_predictions.items():
             for frame_idx, box in enumerate(boxes):
                 row_id = f"{seq_key}_{frame_idx}"
-                writer.writerow([row_id, box, box, box, box])
+                writer.writerow([row_id, box[0], box[1], box[2], box[3]])
                 
     return str(out_path)

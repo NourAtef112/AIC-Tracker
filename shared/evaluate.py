@@ -84,7 +84,7 @@ def main():
         if not pred_file.exists():
             missing.append(seq_key)
             continue
-        gt_boxes   = load_annotations(info["annotation_path"])
+        gt_boxes   = load_annotations(str(Path("data") / info["annotation_path"]))
         pred_boxes = load_annotations(str(pred_file))
         n = min(len(pred_boxes), len(gt_boxes))
         ious, errors, norm_errors = evaluate_sequence(pred_boxes[:n], gt_boxes[:n])
