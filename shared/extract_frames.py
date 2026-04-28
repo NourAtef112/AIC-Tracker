@@ -20,7 +20,7 @@ def extract_sequence(video_path: str, out_dir: str, force: bool = False):
         cv2.imwrite(str(out_dir / f"{idx:08d}.jpg"), frame)
         idx += 1
     cap.release()
-    print(f"  [DONE] {video_path} → {idx} frames")
+    print(f"  [DONE] {video_path} -> {idx} frames")
     return idx
 
 def extract_all(manifest_path: str, split: str = "train", frames_root: str = "frames"):

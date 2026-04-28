@@ -100,8 +100,7 @@ def main():
     prec      = float(np.mean(all_errors < 20.0))
     norm_prec = float(np.mean(all_norm_errors < 0.1))
     acc       = accuracy_score(auc, norm_prec)
-    eff       = efficiency_score(args.params_m, args.flops_g,
-                                  args.latency_ms, args.size_gb)
+    eff       = efficiency_score(args.params_m, args.flops_g,args.latency_ms, args.size_gb)
     final     = final_score(acc, eff)
 
     print("\n" + "█"*52)
