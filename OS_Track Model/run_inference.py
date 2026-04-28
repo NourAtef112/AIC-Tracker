@@ -12,9 +12,9 @@ sys.path.insert(0, str(_HERE.parent / 'shared'))
 sys.path.insert(0, str(_HERE))  # for hanning_penalty, dual_template, multi_scale_inference
 
 try:
-    from lib.test.tracker.ostrack import OSTrack
     from lib.config.ostrack.config import cfg, update_config_from_file
     from lib.train.data.processing_utils import sample_target
+    from ostrack_ext import OSTrackExt as OSTrack
 except ImportError as e:
     raise ImportError(
         f"Could not import OSTrack: {e}. "
