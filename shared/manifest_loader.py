@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, List
 
 @dataclass
@@ -13,8 +14,15 @@ class SequenceInfo:
     annotation_path: Optional[str]
 
 def load_manifest(path: str, split: str) -> List[SequenceInfo]:
-    with open(path) as f:
+    manifest_path = Path(path)
+    # Paths in the manifest are relative to the data root (one level above metadata/)
+    data_root = manifest_path.parent.parent
+    with open(manifest_path) as f:
         manifest = json.load(f)
+
+    def resolve(p: Optional[str]) -> Optional[str]:
+        return str(data_root / p) if p else None
+
     return [
         SequenceInfo(
             key=k,
@@ -22,8 +30,8 @@ def load_manifest(path: str, split: str) -> List[SequenceInfo]:
             seq_name=v["seq_name"],
             n_frames=v["n_frames"],
             native_fps=v["native_fps"],
-            video_path=v["video_path"],
-            annotation_path=v.get("annotation_path")
+            video_path=resolve(v["video_path"]),
+            annotation_path=resolve(v.get("annotation_path"))
         )
         for k, v in manifest.get(split, {}).items()
     ]
