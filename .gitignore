@@ -3,3 +3,46 @@ predictions/**/*.txt
 submission/*.csv
 __pycache__/
 *.pyc
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+
+# Data (large video files, metadata)
+data/dataset*/
+data/metadata/
+
+# Model weights (large binaries)
+OS_Track Model/pretrained/
+HIT Model/pretrained/
+
+# Cloned/submodule repo
+OS_Track Model/OSTrack/
+
+# IDE / tool settings
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Misc runtime
+*.log
+.env
+
+# Extracted frames (generated from source videos — reproduce with extract_frames.py)
+frames/train/
+frames/public_lb/
+
+# Inference outputs (generated — reproduce with run_inference.py)
+predictions/
