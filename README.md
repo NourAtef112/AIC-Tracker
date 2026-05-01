@@ -8,8 +8,8 @@ Competition organized by the **Military Technical College × Applied Innovation 
 |-------|-------|
 | **Task** | Single-Object Tracking (SOT) on UAV aerial videos |
 | **Scoring** | 80% accuracy (AUC + normalized precision) + 20% efficiency (FLOPs, latency, params, size) |
-| **Team Size** | 5 members across 2 models |
-| **Timeline** | 6 days (Day 1 setup → Day 6 submit) |
+| **Team Size** | 5 members across 2 machines |
+| **Timeline** | 2 days (Day 1 build → Day 2 submit) |
 
 ## Final Score Formula
 
@@ -33,116 +33,137 @@ where:
 
 ## Team Structure
 
-### Team A – OSTrack-256 (Accuracy-Focused)
-- **Ahmed** (RTX 5060) – Lead trainer, all training runs
-- **Nour** (RTX 3060) – Post-processing engineer, dual template, Hanning window, ablations
-- **Yassin** (RTX 4050) – Evaluation engineer, prediction writing, metric logging
+> **Submission model:** SGLATrack (DeiT-tiny) — fine-tuned + Hanning + INT8
+> **Teacher model:** OSTrack (ViT-B) — distillation only, never submitted (exceeds 50M param cap)
 
-### Team B – LightTrack (Efficiency-Focused)
-- **Leil** (RTX 3050) – Fine-tuning on lightweight model
-- **Barawy** (Quadro T500) – Data prep, ONNX export, INT8 quantization, efficiency metrics
+### Machine 1 – SGLATrack (Ahmed + Leil)
+- **Ahmed** (RTX 5060) – Lead trainer, fine-tune + ONNX + INT8 pipeline
+- **Leil** (RTX 3050) – Dataset prep, config setup, training support
+
+### Machine 2 – OSTrack + Eval (Nour + Yassin)
+- **Nour** (RTX 3060) – Hanning window, λ sweep, distillation (if triggered)
+- **Yassin** (RTX 4050) – Local eval harness, checkpoint sweep, submission CSV
 
 ## Project Structure
 
 ```
 AIC-Tracker/
-├── shared/                    ← Shared infrastructure (Ahmed owns Day 1)
-│   ├── extract_frames.py      ← MP4 to JPEG frames
-│   ├── annotation_utils.py    ← Load/validate annotations
-│   ├── manifest_loader.py     ← Dataset metadata parser
-│   ├── prediction_writer.py   ← Save tracker output (Yassin)
-│   ├── evaluate.py            ← Official scoring script
-│   └── measure_efficiency.py  ← FLOPs, latency, size measurement (Barawy)
+├── shared/                      ← Shared infrastructure
+│   ├── extract_frames.py        ← MP4 to JPEG frames
+│   ├── annotation_utils.py      ← Load/validate annotations
+│   ├── manifest_loader.py       ← Dataset metadata parser
+│   ├── prediction_writer.py     ← Save tracker output
+│   ├── evaluate.py              ← Official scoring script
+│   ├── measure_efficiency.py    ← FLOPs, latency, size measurement
+│   ├── convert_dataset.py       ← Convert competition data format
+│   ├── local_eval.py            ← Quick local evaluation shortcut
+│   └── validate_submission.py   ← Validate CSV before submitting
 │
-├── OS_Track Model/                    ← OSTrack workspace
-│   ├── OSTrack/               ← (cloned from GitHub, Day 1)
-│   ├── pretrained/            ← Pretrained checkpoint
-│   ├── output/                ← Fine-tuned checkpoints
-│   ├── dual_template.py       ← Static + dynamic template fusion (Nour)
-│   ├── hanning_penalty.py     ← Suppress high-displacement (Nour)
-│   ├── multi_scale_inference.py ← Multi-scale search (Nour, Day 5 only)
-│   └── run_inference.py       ← Full inference pipeline (stub)
+├── SGLA_Track Model/            ← SGLATrack workspace (submission model)
+│   ├── SGLATrack/               ← (cloned from GitHub)
+│   ├── pretrained/              ← DeiT-tiny pretrained weights
+│   ├── output/                  ← Fine-tuned checkpoints
+│   ├── export_onnx.py           ← ONNX export (Ahmed)
+│   ├── quantize.py              ← INT8 quantization (Ahmed)
+│   ├── benchmark_latency.py     ← Latency benchmarking (Ahmed)
+│   ├── efficiency_report.py     ← Full efficiency metrics report
+│   └── run_tracker.py           ← Full inference pipeline
 │
-├── HIT Model/                    ← LightTrack workspace
-│   ├── LightTrack/            ← (cloned from GitHub, Day 1)
-│   ├── pretrained/            ← Pretrained checkpoint
-│   ├── output/                ← Fine-tuned checkpoints
-│   ├── export_onnx.py         ← ONNX export (Barawy)
-│   ├── quantize.py            ← INT8 quantization (Barawy)
-│   └── run_inference.py       ← Full inference pipeline (stub)
+├── OS_Track Model/              ← OSTrack workspace (teacher model only)
+│   ├── OSTrack/                 ← (cloned from GitHub)
+│   ├── pretrained/              ← ViT-B pretrained checkpoint
+│   ├── output/                  ← Fine-tuned checkpoints
+│   ├── dual_template.py         ← Static + dynamic template fusion (Nour)
+│   ├── hanning_penalty.py       ← Suppress high-displacement (Nour)
+│   ├── multi_scale_inference.py ← Multi-scale search (Nour)
+│   ├── distill.py               ← Knowledge distillation (Nour, Day 2)
+│   └── run_inference.py         ← Full inference pipeline
 │
-├── frames/                    ← Extracted video frames
-│   ├── train/                 ← Training split (built by Ahmed)
-│   └── public_lb/             ← Public leaderboard (extracted Day 6)
+├── frames/                      ← Extracted video frames
+│   ├── train/                   ← Training split
+│   └── public_lb/               ← Public leaderboard sequences
 │
-├── data/                      ← Raw competition dataset (read-only)
+├── data/                        ← Raw competition dataset (read-only)
 │   └── contestant_manifest.json
 │
-├── predictions/               ← Tracker outputs (Yassin owns)
+├── predictions/                 ← Tracker outputs
 │   ├── ostrack/
-│   │   ├── baseline/
-│   │   ├── v1_finetuned/
-│   │   ├── v2_dual_template/
-│   │   └── v3_hanning/
 │   └── lighttrack/
-│       ├── baseline/
-│       ├── v1_finetuned/
-│       └── v2_int8/
 │
-├── evaluation/                ← Eval results and metrics
-├── submission/                ← Final submission package
-│   ├── predictions/           ← Final txts for public_lb
-│   └── model/                 ← Final model weights
+├── evaluation/                  ← Eval results and metrics
+├── submission/                  ← Final submission package
+│   ├── predictions/             ← Final CSVs for public_lb
+│   └── model/                   ← Final model weights
 │
-└── scores.xlsx                ← Shared Google Sheet (all runs/metrics)
+└── scores.xlsx                  ← Shared metrics tracker (all runs)
 ```
 
 ## Getting Started
 
-### Day 1 Morning (Ahmed)
+### Pre-flight: Machine 1 (Ahmed + Leil) — SGLATrack Setup
 ```bash
-cd team_a
-git clone https://github.com/botaoye/OSTrack.git
-cd OSTrack
-# Create environment and download pretrained checkpoint
+git clone https://github.com/GXNU-ZhongLab/SGLATrack.git "SGLA_Track Model/SGLATrack"
+cd "SGLA_Track Model/SGLATrack"
+conda env create -f environment_sgla1.yml
+conda activate sglatrack
+# Download deit_tiny_distilled_patch16_224.pth into pretrained/
+# Verify params < 50M before anything else
 ```
 
-### Day 1 Morning (Barawy)
+### Pre-flight: Machine 2 (Nour + Yassin) — OSTrack Setup
 ```bash
-python shared/extract_frames.py --split train --output frames/train
-# Validates all annotation.txt files
+git clone https://github.com/botaoye/OSTrack.git "OS_Track Model/OSTrack"
+cd "OS_Track Model/OSTrack"
+pip install -r requirements.txt
+# Download vitb_256_mae_ce_32x4_ep300 checkpoint into pretrained/
 ```
 
-### Day 1 Afternoon (Yassin)
+### Day 1 Morning — Extract Frames + Baseline
 ```bash
-python shared/evaluate.py \
-  --pred_dir predictions/ostrack/baseline \
-  --manifest data/contestant_manifest.json \
-  --split train \
-  --params_m 28.5 --flops_g 17.2 --latency_ms 14.3 --size_gb 0.11
+python shared/extract_frames.py --manifest data/contestant_manifest.json --split train --output frames/train
+python shared/convert_dataset.py --comp_root data/ --out_root data/comp_train
 ```
 
-## Key Dates
+### Day 2 — Validate Before Submitting
+```bash
+python shared/validate_submission.py --submission submission/predictions/final.csv --sample data/sample_submission.csv
+```
 
-| Day | Milestone | Critical Task |
-|-----|-----------|---------------|
-| 1 | Setup complete | Both models running baseline |
-| 2 | Fine-tuning started | Both training runs launched overnight |
-| 3 | Optimize + ablate | Dual template, Hanning, INT8 integration |
-| 4 @ 11am | Decision meeting | Pick one model (spreadsheet decides) |
-| 5 | Polish only | No new experiments, budget verification |
-| 6 @ 3pm | Submit | All prediction txts packaged and uploaded |
+## Key Milestones
+
+| Checkpoint | Milestone | Critical Task |
+|------------|-----------|---------------|
+| Pre-flight | Both machines set up | SGLATrack param count verified (< 50M) |
+| Day 1, Hour 0–3 | Hanning live + training launched | SGLATrack loss decreasing by epoch 5 |
+| Day 1, Hour 4–8 | ONNX pipeline built | Fallback CSV generated (pretrained SGLATrack) |
+| Day 1, Hour 12 | Day 1 sync | All 6 checklist questions answered |
+| Day 2, Hour 0–3 | Best checkpoint locked | λ sweep done; checkpoint frozen |
+| Day 2, Hour 2 | Distillation decision | Skip or run (≤ 5 epochs, ≤ hour 3) |
+| Day 2, Hour 3–5 | Final model built | INT8 ONNX exported and benchmarked |
+| Day 2, Hour 5–7 | Submission CSV ready | Validated and row count confirmed |
+| Day 2, Hour 7 | Hard stop | No code changes; upload + confirm LB score |
+
+## Fallback Hierarchy
+
+| Priority | Model | State | Ready by |
+|----------|-------|-------|----------|
+| 1 | SGLATrack fine-tuned | + Hanning + INT8 | Day 2 noon |
+| 2 | SGLATrack fine-tuned | + Hanning, FP32 | Day 2 morning |
+| 3 | SGLATrack pretrained | + Hanning | Day 1 evening |
+| 4 | SGLATrack pretrained | no Hanning | Day 1 afternoon |
+
+**Never enter Day 2 without fallback #3 already generated.**
 
 ## Shared Rules
 
 1. **Never modify another member's code without asking first**
 2. **All shared scripts in `shared/` – never duplicate**
 3. **Update `scores.xlsx` after every major run** (AUC, metrics, FinalScore)
-4. **If 1 epoch > 5 hours → cut training epochs from 30 to 15 immediately**
-5. **Day 5 is polish only – no new experiments after Day 4 noon**
+4. **INT8 accuracy drop > 2% AUC → ship FP32 instead**
+5. **No code changes after Day 2, Hour 7**
 
 ## References
 
+- **SGLATrack**: https://github.com/GXNU-ZhongLab/SGLATrack
 - **OSTrack**: https://github.com/botaoye/OSTrack
-- **LightTrack**: https://github.com/researchmm/LightTrack
-- **Full Competition Plan**: See `MTC-AIC4_Full_Plan.md` in root
+- **Full Execution Plan**: See `Ideas/(C) MTC-AIC4 2-Day Execution Roadmap.md`

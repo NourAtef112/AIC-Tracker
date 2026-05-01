@@ -16,16 +16,26 @@ data/metadata/
 # Model weights (large binaries)
 OS_Track Model/pretrained/
 HIT Model/pretrained/
+SGLA_Track Model/pretrained/
 
-# Cloned/submodule repo
+# Cloned/submodule repos
 OS_Track Model/OSTrack/
+SGLA_Track Model/SGLATrack/
 
 # IDE / tool settings
 .claude/
+.obsidian/
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Personal brain & notes
+CLAUDE.md
+COMMANDS.md
+brainstorms/
+decisions/
+ideas/
 
 # OS-specific
 .DS_Store

@@ -6,12 +6,14 @@ def extract_sequence(video_path: str, out_dir: str, force: bool = False):
     if out_dir.exists() and not force:
         existing = list(out_dir.glob("*.jpg"))
         if existing:
-            print(f"  [SKIP] {out_dir} → {len(existing)} frames already extracted")
+            print(f"  [SKIP] {out_dir} -> {len(existing)} frames already extracted")
             return len(existing)
     out_dir.mkdir(parents=True, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        raise RuntimeError(f"Cannot open: {video_path}")
+        out_dir.rmdir() if out_dir.exists() and not any(out_dir.iterdir()) else None
+        print(f"  [MISSING] {video_path}")
+        return 0
     idx = 0
     while True:
         ret, frame = cap.read()
@@ -23,13 +25,14 @@ def extract_sequence(video_path: str, out_dir: str, force: bool = False):
     print(f"  [DONE] {video_path} -> {idx} frames")
     return idx
 
-def extract_all(manifest_path: str, split: str = "train", frames_root: str = "frames"):
+def extract_all(manifest_path: str, split: str = "train", frames_root: str = "frames", data_root: str = "data"):
     with open(manifest_path) as f:
         manifest = json.load(f)
     sequences = manifest.get(split, {})
     print(f"Extracting {len(sequences)} sequences | split={split}")
     for seq_key, info in sequences.items():
-        extract_sequence(info["video_path"], str(Path(frames_root) / seq_key))
+        video_path = str(Path(data_root) / info["video_path"])
+        extract_sequence(video_path, str(Path(frames_root) / seq_key))
 
 if __name__ == "__main__":
     import argparse
