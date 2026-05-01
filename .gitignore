@@ -1,9 +1,65 @@
+# ============================================================================
+# LARGE DATA & DATASETS (regenerable, NOT pushed)
+# ============================================================================
+data/dataset*/
+data/metadata/
 /data
-predictions/**/*.txt
-submission/*.csv
-__pycache__/
-*.pyc
-# Python artifacts
+
+# ============================================================================
+# MODEL WEIGHTS & CHECKPOINTS (large binaries, regenerable)
+# ============================================================================
+# Pretrained weights
+OS_Track Model/pretrained/
+OSTrack_Model/pretrained/
+SGLA_Track Model/pretrained/
+HIT Model/pretrained/
+
+# Training/finetuning outputs and checkpoints
+OS_Track Model/output*/
+OS_Track Model/**/output/
+OSTrack_Model/output*/
+OSTrack_Model/**/output/
+SGLA_Track Model/output*/
+SGLA_Track Model/**/output/
+SGLA_Track Model/**/*checkpoint*/
+*.pth
+*.pt
+
+# ============================================================================
+# CLONED/SUBMODULE REPOS (NOT our source code, regenerable)
+# ============================================================================
+OS_Track Model/OSTrack/
+OSTrack_Model/OSTrack/
+SGLA_Track Model/SGLATrack/
+
+# ============================================================================
+# GENERATED INFERENCE & EVALUATION OUTPUTS (reproducible)
+# ============================================================================
+predictions/
+evaluation/
+frames/
+**/frames/
+frames/**/*.jpg
+frames/**/*.png
+frames/**/*.jpeg
+
+# ============================================================================
+# SUBMISSION ARTIFACTS (generated)
+# ============================================================================
+submission/predictions/
+submission/model/
+
+# ============================================================================
+# MODEL EXPORT FORMATS (generated, regenerable)
+# ============================================================================
+*.onnx
+*.ort
+*.pb
+*.tflite
+
+# ============================================================================
+# PYTHON ARTIFACTS
+# ============================================================================
 __pycache__/
 *.py[cod]
 *.pyd
@@ -13,67 +69,47 @@ __pycache__/
 .eggs/
 dist/
 build/
+*.whl
 
-# Data (large video files, metadata)
-data/dataset*/
-data/metadata/
-
-# Model weights (large binaries)
-OS_Track Model/pretrained/
-HIT Model/pretrained/
-SGLA_Track Model/pretrained/
-
-# Cloned/submodule repos
-OS_Track Model/OSTrack/
-OS_Track Model/OSTrack/data/
-SGLA_Track Model/SGLATrack/
-
-# IDE / tool settings
-.claude/
-.obsidian/
+# ============================================================================
+# IDE & ENVIRONMENT
+# ============================================================================
 .vscode/
 .idea/
+.claude/
+.obsidian/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
 
-# Personal brain & notes
+# ============================================================================
+# RUNTIME & LOGS
+# ============================================================================
+*.log
+.env
+.env.local
+.env.*.local
+tensorboard/
+*.tmp
+*.bak
+
+# ============================================================================
+# PERSONAL NOTES (NOT pushed, keep locally)
+# ============================================================================
 CLAUDE.md
 COMMANDS.md
+Brainstorms/
+Decisions/
+Ideas/
 brainstorms/
 decisions/
 ideas/
 
-# OS-specific
-.DS_Store
-Thumbs.db
-
-# Misc runtime
-*.log
-.env
-
-# Extracted frames (generated from source videos — reproduce with convert_dataset.py)
-frames/
-**/frames/
-frames/**/*.jpg
-frames/**/*.png
-frames/**/*.jpeg
-
-# Inference outputs (generated — reproduce with run_inference.py)
-predictions/
-
-# Submission artifacts (large, generated)
-submission/predictions/
-submission/model/
-
-# ONNX exports and quantized models (generated — reproduce with export_onnx.py / quantize.py)
-*.onnx
-*.ort
-
-# Evaluation results (generated)
-evaluation/
-
-# TensorBoard logs
-tensorboard/
-
-# OSTrack competition config
+# ============================================================================
+# GENERATED CONFIGS (competition-specific, auto-generated)
+# ============================================================================
 OS_Track Model/OSTrack/experiments/ostrack/comp_finetune.yaml
+OSTrack_Model/OSTrack/experiments/ostrack/comp_finetune.yaml
