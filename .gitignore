@@ -1,3 +1,8 @@
+/data
+predictions/**/*.txt
+submission/*.csv
+__pycache__/
+*.pyc
 # Python artifacts
 __pycache__/
 *.py[cod]
