@@ -9,30 +9,53 @@ Only runs if OSTrack-vs-SGLATrack gap ≥ 2% before Day 2 hour 3.
 From roadmap.
 """
 
+import sys
+from pathlib import Path
+
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
+_HERE = Path(__file__).parent
+sys.path.insert(0, str(_HERE / 'OSTrack'))
 
-def distillation_loss(teacher_out, student_out, gt_labels, alpha: float = 0.5, temp: float = 4.0):
+from lib.utils.box_ops import giou_loss, box_cxcywh_to_xyxy, box_xywh_to_xyxy
+from lib.utils.focal_loss import FocalLoss
+
+
+def distillation_loss(teacher_out, student_out, gt_bbox, gt_gaussian_maps, loss_weight: dict,
+                      alpha: float = 0.5, temp: float = 4.0):
     """Compute distillation loss (task + KL divergence on response maps).
 
+    Task loss = GIoU + L1 + Focal (matches OSTrack actor)
+    Distillation = KL divergence on teacher score_map
+
     Args:
-        teacher_out: Teacher output dict (should contain 'score_map')
-        student_out: Student output dict (should contain 'score_map')
-        gt_labels: Ground truth labels for task loss
+        teacher_out: Teacher output dict with 'score_map'
+        student_out: Student output dict with 'pred_boxes', 'score_map', 'size_map', 'offset_map'
+        gt_bbox: Ground truth boxes (N, 4) in xywh format
+        gt_gaussian_maps: Ground truth Gaussian heatmaps for focal loss
+        loss_weight: Dict with 'giou' and 'l1' weights (from config)
         alpha: Balance between task loss and distillation. 0.5 = equal weight
         temp: Temperature for softmax (higher = softer targets)
 
     Returns:
-        Combined loss tensor
+        Tuple: (combined_loss, task_loss, kl_loss)
     """
-    # Task loss: student's own supervised loss (e.g., BCE or focal)
-    # This is model-specific; shown as placeholder
-    task_loss = F.binary_cross_entropy_with_logits(
-        student_out['score_map'].view(student_out['score_map'].size(0), -1),
-        gt_labels.view(gt_labels.size(0), -1)
-    )
+    # Task loss: GIoU + L1 + Focal (matches OSTrack's CENTER head loss)
+    pred_boxes_vec = box_cxcywh_to_xyxy(student_out['pred_boxes']).view(-1, 4)
+    gt_boxes_vec = box_xywh_to_xyxy(gt_bbox)
+    if gt_boxes_vec.dim() == 2 and pred_boxes_vec.size(0) > gt_boxes_vec.size(0):
+        gt_boxes_vec = gt_boxes_vec[:, None, :].expand(-1, pred_boxes_vec.size(0) // gt_boxes_vec.size(0), -1).reshape(-1, 4)
+
+    giou, _ = giou_loss(pred_boxes_vec, gt_boxes_vec)
+    l1 = F.l1_loss(pred_boxes_vec, gt_boxes_vec)
+
+    focal = FocalLoss()(student_out['score_map'], gt_gaussian_maps)
+
+    task_loss = (loss_weight['giou'] * giou +
+                 loss_weight['l1'] * l1 +
+                 focal)
 
     # Distillation: match teacher's response map distribution via KL divergence
     t_resp = teacher_out['score_map'].view(teacher_out['score_map'].size(0), -1)
@@ -66,12 +89,13 @@ class DistillationTrainer:
         for p in self.teacher.parameters():
             p.requires_grad = False
 
-    def train_epoch(self, train_loader, optimizer, alpha: float = 0.5, temp: float = 4.0):
+    def train_epoch(self, train_loader, optimizer, loss_weight: dict, alpha: float = 0.5, temp: float = 4.0):
         """Train one epoch with distillation loss.
 
         Args:
-            train_loader: DataLoader yielding (template, search, gt_boxes)
+            train_loader: DataLoader yielding (template, search, gt_boxes, gt_gaussian_maps)
             optimizer: Optimizer for student parameters
+            loss_weight: Dict with 'giou' and 'l1' weights
             alpha: Task/distillation balance
             temp: Temperature for softmax
 
@@ -83,10 +107,11 @@ class DistillationTrainer:
         total_kl = 0.0
         n_batches = 0
 
-        for batch_idx, (template, search, gt_labels) in enumerate(train_loader):
+        for batch_idx, (template, search, gt_boxes, gt_gaussian_maps) in enumerate(train_loader):
             template = template.to(self.device)
             search = search.to(self.device)
-            gt_labels = gt_labels.to(self.device)
+            gt_boxes = gt_boxes.to(self.device)
+            gt_gaussian_maps = gt_gaussian_maps.to(self.device)
 
             # Teacher forward (no grad)
             with torch.no_grad():
@@ -97,8 +122,8 @@ class DistillationTrainer:
 
             # Compute loss
             loss, task_loss, kl_loss = distillation_loss(
-                teacher_out, student_out, gt_labels,
-                alpha=alpha, temp=temp
+                teacher_out, student_out, gt_boxes, gt_gaussian_maps,
+                loss_weight=loss_weight, alpha=alpha, temp=temp
             )
 
             # Backward
@@ -131,13 +156,14 @@ class DistillationTrainer:
         print(f"Checkpoint saved: {path}")
 
 
-def main_distill(teacher_model, student_model, train_loader, num_epochs: int = 5):
+def main_distill(teacher_model, student_model, train_loader, cfg, num_epochs: int = 5):
     """Main distillation training loop (5 epochs max for time budget).
 
     Args:
         teacher_model: OSTrack (frozen)
         student_model: SGLATrack (trainable)
         train_loader: DataLoader with competition training data
+        cfg: Config object with TRAIN settings
         num_epochs: Number of epochs (cap at 5 for time budget)
     """
     num_epochs = min(num_epochs, 5)
@@ -145,15 +171,24 @@ def main_distill(teacher_model, student_model, train_loader, num_epochs: int = 5
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     trainer = DistillationTrainer(teacher_model, student_model, device=device)
 
-    optimizer = optim.Adam(trainer.student.parameters(), lr=1e-4)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
+    optimizer = optim.AdamW(trainer.student.parameters(), lr=cfg.TRAIN.LR,
+                            weight_decay=cfg.TRAIN.WEIGHT_DECAY)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=cfg.TRAIN.LR_DROP_EPOCH)
+
+    loss_weight = {
+        'giou': cfg.TRAIN.GIOU_WEIGHT,
+        'l1': cfg.TRAIN.L1_WEIGHT,
+    }
 
     print(f"Starting distillation training ({num_epochs} epochs, max)")
+    print(f"LR={cfg.TRAIN.LR}, Weight_decay={cfg.TRAIN.WEIGHT_DECAY}")
+    print(f"Loss weights: GIoU={loss_weight['giou']}, L1={loss_weight['l1']}")
     print("=" * 60)
 
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
-        avg_loss, avg_task, avg_kl = trainer.train_epoch(train_loader, optimizer)
+        avg_loss, avg_task, avg_kl = trainer.train_epoch(train_loader, optimizer,
+                                                         loss_weight=loss_weight)
         scheduler.step()
 
         print(f"Epoch {epoch + 1} summary:")
@@ -177,4 +212,4 @@ def main_distill(teacher_model, student_model, train_loader, num_epochs: int = 5
 if __name__ == '__main__':
     print("Distillation training script")
     print("Usage: instantiate teacher (OSTrack) + student (SGLATrack),")
-    print("       create train_loader, call main_distill()")
+    print("       load config, create train_loader, call main_distill()")

@@ -18,8 +18,8 @@ try:
 except ImportError as e:
     raise ImportError(
         f"Could not import OSTrack: {e}. "
-        "Clone the OSTrack repo into 'OS_Track Model/OSTrack/' first:\n"
-        "  git clone https://github.com/botaoye/OSTrack.git 'OS_Track Model/OSTrack'"
+        "Clone the OSTrack repo into 'OSTrack_Model/OSTrack/' first:\n"
+        "  git clone https://github.com/botaoye/OSTrack.git 'OSTrack_Model/OSTrack'"
     ) from e
 
 try:
@@ -39,7 +39,7 @@ def build_tracker(args) -> OSTrack:
     params = types.SimpleNamespace(
         cfg=cfg,
         checkpoint=args.checkpoint,
-        search_factor=4.0,
+        search_factor=4.5,
         template_factor=2.0,
         search_size=256,
         template_size=128,
