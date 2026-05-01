@@ -19,8 +19,8 @@ def extract_sequence(video_path: str, out_dir: str, force: bool = False):
         ret, frame = cap.read()
         if not ret:
             break
-        cv2.imwrite(str(out_dir / f"{idx:08d}.jpg"), frame)
         idx += 1
+        cv2.imwrite(str(out_dir / f"{idx:08d}.jpg"), frame)
     cap.release()
     print(f"  [DONE] {video_path} -> {idx} frames")
     return idx

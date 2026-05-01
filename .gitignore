@@ -20,6 +20,7 @@ SGLA_Track Model/pretrained/
 
 # Cloned/submodule repos
 OS_Track Model/OSTrack/
+OS_Track Model/OSTrack/data/
 SGLA_Track Model/SGLATrack/
 
 # IDE / tool settings
@@ -45,9 +46,29 @@ Thumbs.db
 *.log
 .env
 
-# Extracted frames (generated from source videos — reproduce with extract_frames.py)
-frames/train/
-frames/public_lb/
+# Extracted frames (generated from source videos — reproduce with convert_dataset.py)
+frames/
+**/frames/
+frames/**/*.jpg
+frames/**/*.png
+frames/**/*.jpeg
 
 # Inference outputs (generated — reproduce with run_inference.py)
 predictions/
+
+# Submission artifacts (large, generated)
+submission/predictions/
+submission/model/
+
+# ONNX exports and quantized models (generated — reproduce with export_onnx.py / quantize.py)
+*.onnx
+*.ort
+
+# Evaluation results (generated)
+evaluation/
+
+# TensorBoard logs
+tensorboard/
+
+# OSTrack competition config
+OS_Track Model/OSTrack/experiments/ostrack/comp_finetune.yaml
